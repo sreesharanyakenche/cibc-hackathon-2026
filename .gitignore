@@ -1,0 +1,9 @@
+.venv/
+data/
+warehouse/
+*.duckdb
+*.duckdb.wal
+.env
+__pycache__/
+.pytest_cache/
+node_modules/
