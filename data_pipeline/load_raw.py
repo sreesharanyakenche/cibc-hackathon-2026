@@ -12,7 +12,7 @@ import time
 
 import duckdb
 
-from config import DATA, MAIN_DB, PARQUET_TABLES, SCHEMA_JSON, WAREHOUSE
+from data_pipeline.config import DATA, MAIN_DB, PARQUET_TABLES, SCHEMA_JSON, WAREHOUSE
 
 ID_HINTS = ("_id", "_ref", "_key", "_hash", "_uuid")
 

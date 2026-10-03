@@ -16,7 +16,7 @@ import sys
 
 import duckdb
 
-from config import MAIN_DB
+from data_pipeline.config import MAIN_DB
 
 SNAPSHOT_DATE = "2026-09-28"  # README: snapshot date
 
@@ -37,18 +37,24 @@ VIEWS = {
 
     "cur_promises": f"""
         select p.*,
-               (p.ptp_status in ('kept','partially_kept','broken')) as is_resolved,
-               (p.ptp_status = 'broken') as is_broken,
-               (p.ptp_status = 'kept') as is_kept,
-               (p.ptp_status = 'open'
-                  and p.ptp_due_date + INTERVAL 2 DAY < (select snapshot_date from meta_snapshot)) as open_past_grace_flag
+               coalesce(p.ptp_status in ('kept','partially_kept','broken'), false) as is_resolved,
+               coalesce(p.ptp_status = 'broken', false) as is_broken,
+               coalesce(p.ptp_status = 'kept', false) as is_kept,
+               coalesce(
+                 p.ptp_status = 'open'
+                 and p.ptp_due_date + INTERVAL 2 DAY < (select snapshot_date from meta_snapshot),
+                 false
+) as open_past_grace_flag
         from raw_promises_to_pay p""",
 
     "cur_contacts": """
         select h.*,
                coalesce(h.channel_v2, h.channel) as channel_eff,
-               (h.channel = 'system' or h.channel_v2 = 'system' or h.direction = 'internal') as is_system_event,
-               cast(h.contact_ts_local as date) as contact_date_local
+               coalesce(
+                h.channel = 'system' or h.channel_v2 = 'system' or h.direction = 'internal',
+                false
+) as is_system_event,
+cast(h.contact_ts_local as date) as contact_date_local
         from raw_contact_history h""",
 
     "cur_snapshot": f"""
@@ -70,6 +76,7 @@ VIEWS = {
 
 
 def main() -> None:
+    MAIN_DB.parent.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(str(MAIN_DB))
     for name, sql in VIEWS.items():
         con.execute(f"create or replace view {name} as {sql}")
