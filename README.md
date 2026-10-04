@@ -135,7 +135,7 @@ H3 and H4 (Context Card, contact budget) are untested.
 
 ## Findings worth knowing
 
-* **The promised-amount fields look generated after the outcome.** `ptp_amount` and the overdue ratio give AUC 0.963, but full-amount promises are 38% of resolved promises and only 0.3% of the 33,005 open ones. They are excluded from the production model and kept only as a labelled reference (`models/ptp_break_v1_reference_amounts.*`, never loaded by the decision code). [Details](docs/decisioning.md).
+* **The promised-amount fields look generated after the outcome.** Adding `ptp_amount` and the overdue ratio to the model lifts held-out AUC from 0.645 to 0.963 (we did not test them alone), but full-amount promises are 38% of resolved promises and only 0.3% of the 33,005 open ones. They are excluded from the production model and kept only as a labelled reference (`models/ptp_break_v1_reference_amounts.*`, never loaded by the decision code). [Details](docs/decisioning.md).
 * Leaks found and fixed: the stored `prior_broken_ptp_count` carried final outcomes for 4.2% of repeat promises; a regex matched "sue" inside "issue"; a bureau join picked rows arbitrarily; `upcoming()` scored only the first 2,000 promises.
 
 ## Limitations and assumptions (please read)

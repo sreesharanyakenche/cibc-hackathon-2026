@@ -132,6 +132,7 @@ export default function DecisionPage() {
         )}
       </Card>
       <p className="muted small">Risk {pct(r.risk)} is a calibrated probability that the promise breaks. {r.risk_note}</p>
+      <p className="muted small">Scored once, from what was known when the promise was created. It is not re-scored 3 days or 1 day before the due date, so a payment made since then is caught only by the payment-received gate, which sees about half of early payers.</p>
     </>
   );
 }
@@ -172,6 +173,7 @@ function ReviewPanel({ decisionId, record, roles, onDone }: { decisionId: string
 
   return (
     <Card title="Human review and override" right={<Badge tone={record.review_required ? "amber" : "gray"}>{record.review_required ? "required by policy" : "optional: anyone can review anything"}</Badge>}>
+      <p className="muted small">Demo reviewer directory: ids are bound to roles, but there is no login. This is not authentication, so the review history shows which id was used, not who was at the keyboard.</p>
       <form className="form" onSubmit={submit}>
         <label>Reviewer
           <select value={who} onChange={(e) => setWho(e.target.value)}>

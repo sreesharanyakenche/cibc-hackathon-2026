@@ -55,7 +55,7 @@ customer; output goes to a human. The LLM has no role in Layer 4.
   This bridge is separate from Layer 1's identity matching: the model's bureau and transaction features still use it, while the identity gate and Decision Record use the golden C360 (`docs/layer1_identity_c360.md`). Moving these features onto the C360 links is not done.
 
 ## IMPORTANT FINDING: the promised-amount fields look generated after the outcome
-`ptp_to_overdue_ratio` and `ptp_amount` give AUC 0.963 on the held-out window, but they are excluded from the production model:
+Adding `ptp_to_overdue_ratio` and `ptp_amount` to the production feature set lifts held-out AUC from 0.6445 to 0.963 (an amount-only model was not tested), but they are excluded from the production model:
 * Promises with ratio = 1.0 (the full overdue amount) are 38% of resolved promises and break 2.2% of the time; partial-amount promises break 44-85%.
 * Among promises created since 1 Sep: 25% of those that turned out kept have ratio 1.0, 0.2% of those that turned out broken do, and
   only **0.3% of the 33,005 open promises** do. If the ratio were a real creation-time signal, a large share of the open promises would be full-amount.
