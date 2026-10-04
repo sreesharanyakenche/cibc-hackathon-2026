@@ -184,4 +184,4 @@ Vulnerable customers are routed to certified agents by the gate, not scored hard
 * Calibration over-predicts the top bands by 5-7 points; scores above 0.90 are thin.
 * Text features are regexes on one note; customers without a note have missing text features. Other regexes (for example `try to`, `paid on`) are unanchored and not audited.
 * Identity: the gate uses the golden C360 trust score and the duplicate / deleted flags. The 0.70 threshold is an assumption. The record stores `customer_key`, `match_confidence`, `trust_score` and conflict flags; customers the C360 cannot resolve are treated as missing, not as low trust.
-* The full test suite (140 tests, about 7 minutes, real data) also rewrites `outputs/benchmark_answers.csv` through the Layer 2 tests. Stop the API before running it: the API process holds the write lock on `warehouse/decisions.duckdb`.
+* The full test suite (152 tests, about 4 to 7 minutes, real data) no longer touches `outputs/benchmark_answers.csv` (the Layer 2 test writes to a temp file). Stop the API before running it: the API process holds the write lock on `warehouse/decisions.duckdb`.

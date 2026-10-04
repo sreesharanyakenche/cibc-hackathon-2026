@@ -33,6 +33,7 @@ SYN = {"sunday": ["sunday", "dimanche"], "quebec": ["québec", "quebec"], "québ
        "proposal": ["consumer", "proposal", "insolvency"], "bankrupt": ["bankruptcy", "insolvency"],
        "bankruptcy": ["bankruptcy", "insolvency"], "hours": ["hours", "permitted"],
        "attempts": ["attempts", "calls"], "reduced": ["reduced", "payment"], "cut": ["reduced", "hardship"],
+       "fraudulent": ["fraud"], "fraudulently": ["fraud"], "unauthorised": ["fraud"], "unauthorized": ["fraud"], "scam": ["fraud"],
        "layoff": ["hardship", "job"], "laid": ["hardship", "job"]}
 
 

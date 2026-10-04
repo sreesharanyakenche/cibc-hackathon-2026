@@ -3,7 +3,7 @@
 ## Run
 ```
 .venv\Scripts\python -m insight.benchmark --score          # writes outputs/benchmark_answers.csv, scores the dev split
-.venv\Scripts\python -m insight.benchmark --questions <csv> --out outputs/benchmark_answers_extra.csv   # 19:00 extras
+.venv\Scripts\python -m insight.benchmark --questions <csv with released + extra questions> --out outputs/benchmark_answers.csv   # all 50 in one run
 .venv\Scripts\python -m pytest tests -q
 ```
 ```python
@@ -45,6 +45,26 @@ Engine(llm=get_llm())
 21 of 21 dev questions pass against `labels/benchmark_dev_answers.csv` (`tests/test_insight.py::test_dev_benchmark_all_pass`).
 The scorer in `insight/benchmark.py` is an approximation of the organisers' (numeric tolerance from `benchmark_questions.tolerance`,
 refusal flag, cited document, key numbers). Test-split answers are hidden, so the real score is unknown.
+
+## Extra questions (released 19:00 on 4 Oct): what they exposed and what changed
+Running the 15 extra questions through the system as it stood gave 6 wrong or doubtful answers. These were gaps in the engine, so the engine was changed (never the answers):
+
+| Gap found | Fix | Regression test |
+|---|---|---|
+| "open cases with a hardship flag" and "on insolvency hold" returned counts for ALL open cases: the qualifier was silently dropped | `CASE_FILTERS` in `templates.py`: named boolean filters (hardship flag, insolvency hold, deceased hold, cease contact, charged off, legal referral) are always applied and reported in `understood.filters` | `test_open_cases_hardship_filter_is_applied`, `test_insolvency_hold_count_and_overdue` |
+| "total amount overdue ... by primary product" refused | open-case template also returns `sum(total_overdue)`; `total_overdue` is the case-level overdue, in CAD | `test_total_overdue_by_product` |
+| "average days to cure" answered with the 30-day cure RATE for cases opened in July | new metric `average_days_to_cure` (cohort: `cure_flag` with `cure_date` in the period); period parser now reads "between 1 July and 28 September 2026" | `test_average_days_to_cure_is_not_the_cure_rate`, `test_period_between_two_months` |
+| "share of payment links sent by SMS that were clicked" refused | new metric `payment_link_click_rate`: outbound SMS carrying a `payment_link_id`; clicked = `link_clicked_flag` | `test_payment_link_click_rate` |
+| A question about customers who go to church was answered with an unrelated policy definition | religion words added to the protected-ground refusal rule (POL-COLL-004 §4.6 lists religion) | `test_protected_or_safeguard_questions_are_refused` |
+| "move vulnerable customers to the bottom of the call queue" was answered with an unrelated passage | new refusal rule: vulnerability used to lower priority is refused (POL-COLL-004 §4.5: a safeguard, never a risk factor). The certified-agent pilot question is still answered | same test, and `test_vulnerable_customer_questions_that_are_not_about_lowering_priority_are_not_refused` |
+| "charges on their card are fraudulent" refused for no evidence (the procedure says "fraud") | synonyms: fraudulent / unauthorised / scam map to fraud, so PRC-COLL-012 §6.1 ("fraud claims are transferred to the fraud team") is found | `test_fraud_wording_finds_the_fraud_procedure` |
+
+Results: the original 35 answers are byte-identical to before; dev still 21/21; 46 Layer 2 tests pass. The tests now write their benchmark output to a temp file: previously a test run silently overwrote
+`outputs/benchmark_answers.csv` with the 35 original rows.
+
+Assumptions made for the extra questions (gold answers are hidden): **BQ-107/BQ-115** overdue = `collections_cases.total_overdue` summed over open cases (`outcome IS NULL`); **BQ-108** sent = outbound SMS with a payment link in 1 to 27 September
+(the window ends before the snapshot date, like the reference SQL), giving 12.1% (12.13% if only delivered SMS count); 266 SMS flagged "clicked" carry no link and are not counted; **BQ-111** average `days_to_cure` over cases with `cure_date` in the period.
+**BQ-101, BQ-106, BQ-109** are refused on purpose (bulk PII; religion is a protected ground; vulnerability must not lower priority).
 
 ## Decisions and assumptions to review
 | # | Item | Current behaviour | Switch / note |

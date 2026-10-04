@@ -138,10 +138,10 @@ def test_no_pii_columns_ever_returned(engine):
         assert not any(c in a.answer.lower() for c in ("first_name", "phone", "date_of_birth"))
 
 
-def test_dev_benchmark_all_pass():
-    from data_pipeline.config import ROOT
+def test_dev_benchmark_all_pass(tmp_path):
     from insight import benchmark
-    results = benchmark.run(DATA / "benchmark_questions.csv", ROOT / "outputs" / "benchmark_answers.csv")
+    # writes to a temp file: the submission file outputs/benchmark_answers.csv must never be overwritten by a test run
+    results = benchmark.run(DATA / "benchmark_questions.csv", tmp_path / "benchmark_answers.csv")
     failed = [r for r in benchmark.score_dev(results) if r[1] != "PASS"]
     assert not failed, failed
 

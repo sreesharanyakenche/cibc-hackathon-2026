@@ -41,6 +41,12 @@ def _parse_period(q: str, as_of: date) -> Period | None:
             mm += 12; yy -= 1
         start = date(yy, mm, min(end.day, calendar.monthrange(yy, mm)[1])) + timedelta(days=1)
         return Period(start, end, f"{k} months to {end.isoformat()}")
+    # "between 1 July and 28 September 2026" (different months)
+    m = re.search(rf"(\d{{1,2}}) ({MONTH_RE})(?: (\d{{4}}))? ?(?:and|-|to|–|through) ?(\d{{1,2}}) ({MONTH_RE})(?: (\d{{4}}))?", s)
+    if m:
+        y2 = int(m.group(6) or as_of.year); y1 = int(m.group(3) or y2)
+        a = date(y1, MONTHS[m.group(2)], int(m.group(1))); b = date(y2, MONTHS[m.group(5)], int(m.group(4)))
+        return Period(a, b, f"{a.isoformat()} to {b.isoformat()}")
     # "between 15 and 22 September 2026" / "on 23-24 September 2026"
     m = re.search(rf"(\d{{1,2}}) ?(?:and|-|to|–) ?(\d{{1,2}}) ({MONTH_RE})(?: (\d{{4}}))?", s)
     if m:

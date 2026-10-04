@@ -104,6 +104,29 @@ def case_dims() -> dict:
     }
 
 
+# Qualifiers a question can put on the OPEN-CASE population. Each is an explicit, named boolean column; a recognised
+# qualifier is always applied (and reported in `understood`), never silently dropped.
+CASE_FILTERS = [
+    (r"hardship flag|flagged (?:as )?(?:in )?hardship|on hardship|with hardship|hardship cases?", "c.hardship_flag", "hardship_flag"),
+    (r"insolvency hold|on insolvency", "c.insolvency_hold_flag", "insolvency_hold_flag"),
+    (r"deceased hold", "c.deceased_hold_flag", "deceased_hold_flag"),
+    (r"cease[- ]contact", "c.cease_contact_flag", "cease_contact_flag"),
+    (r"charged[- ]off", "c.chargeoff_flag", "chargeoff_flag"),
+    (r"legal referral", "c.legal_referral_flag", "legal_referral_flag"),
+]
+
+
+def case_filters(q: str) -> tuple[str, list[str]]:
+    """(extra SQL conditions, names of the filters applied) for the open-case population."""
+    s = q.lower()
+    conds, names = [], []
+    for rx, expr, name in CASE_FILTERS:
+        if re.search(rx, s):
+            conds.append(expr)
+            names.append(name)
+    return "".join(f" and {c}" for c in conds), names
+
+
 CONTACT_DIMS = {
     "hour": ("h.contact_hour_local", ""),
     "channel": ("h.channel_eff", ""),
@@ -179,13 +202,27 @@ def _case_metric(q: str, ctx: Ctx, kind: str) -> Plan | None:
     notes = []
     if dim == "bucket":
         notes.append(bucket_note())
+    fcond, fnames = case_filters(q)
     if kind == "avg_dpd":
         sql = (f"select {pref}round(avg(c.current_dpd), 1) as avg_dpd, count(*) as open_cases "
-               f"from cur_cases c where c.is_open {grp} {order}")
-        return Plan("average_dpd", sql, _understood("average_dpd", ctx, dim, None), notes)
+               f"from cur_cases c where c.is_open{fcond} {grp} {order}")
+        return Plan("average_dpd", sql, _understood("average_dpd", ctx, dim, None, filters=fnames or None), notes)
     if kind == "open_cases":
-        sql = f"select {pref}count(*) as open_cases from cur_cases c where c.is_open {grp} {order}"
-        return Plan("open_cases", sql, _understood("open_cases", ctx, dim, None, open_definition="outcome IS NULL"), notes)
+        overdue = bool(re.search(r"overdue|amount owed|owing", q.lower()))
+        measure = "count(*) as open_cases"
+        if overdue:
+            measure += ", round(sum(c.total_overdue), 2) as total_overdue_cad"
+            notes.append("Overdue = collections_cases.total_overdue summed over open cases (outcome IS NULL), in CAD.")
+        sql = f"select {pref}{measure} from cur_cases c where c.is_open{fcond} {grp} {order}"
+        return Plan("open_cases", sql, _understood("open_cases", ctx, dim, None, open_definition="outcome IS NULL",
+                                                   filters=fnames or None, measure="total_overdue" if overdue else None), notes)
+    if kind == "avg_days_to_cure":
+        sql = (f"select {pref}round(avg(c.days_to_cure), 1) as avg_days_to_cure, count(*) as cured_cases "
+               f"from cur_cases c where c.cure_flag and c.days_to_cure is not null"
+               f"{_date_window('c.cure_date', period)} {grp} {order}")
+        notes.append("Cohort = cases that cured (cure_flag) with a cure_date in the period; days_to_cure is as recorded on the case.")
+        return Plan("average_days_to_cure", sql, _understood("average_days_to_cure", ctx, dim, period, period_applies_to="cure_date"),
+                    notes)
     if kind == "hardship_rate":
         sql = (f"select {pref}round(100.0 * avg(case when c.hardship_flag then 1 else 0 end), 1) as hardship_rate_pct, "
                f"count(*) as cases from cur_cases c where true{_date_window('c.case_open_date', period)} {grp} {order}")
@@ -229,6 +266,14 @@ def _contact_metric(q: str, ctx: Ctx, kind: str) -> Plan | None:
     pref, grp, order = _group(dim_expr, dim)
     window = _contact_window("h.contact_ts_local", period, ctx.as_of)
     call_filter = "h.channel_eff = 'call' and h.direction = 'outbound'"
+    if kind == "link_click":
+        sql = (f"select {pref}round(100.0 * avg(case when h.link_clicked_flag then 1 else 0 end), 1) as link_click_rate_pct, "
+               f"count(*) as payment_links_sent from cur_contacts h {joins} "
+               f"where h.channel_eff = 'sms' and h.direction = 'outbound' and h.payment_link_id is not null{window} {grp} {order}")
+        return Plan("payment_link_click_rate", sql, _understood("payment_link_click_rate", ctx, dim, period, scope="outbound SMS with a payment link"),
+                    ["Sent = outbound SMS carrying a payment link (payment_link_id present); clicked = link_clicked_flag. "
+                     "Rows flagged clicked that carry no payment_link_id are not counted. "
+                     "Channel read as COALESCE(channel_v2, channel); the window ends before the snapshot date."], ["REL-0926"])
     if kind == "rpc_rate":
         sql = (f"select {pref}round(100.0 * avg(case when h.rpc_flag then 1 else 0 end), 1) as rpc_rate_pct, "
                f"count(*) as attempts from cur_contacts h {joins} where {call_filter}{window} {grp} {order}")
@@ -398,6 +443,7 @@ RULES = [
     ("disputes", lambda s: "dispute" in s and ("compared" in s or "raised" in s), lambda q, c: _dispute_compare(q, c)),
     ("roll", lambda s: "rolled to a worse" in s or "roll rate" in s, lambda q, c: _roll_rate(q, c)),
     ("writeoff", lambda s: bool(re.search(r"charged off|charge-off|write-off|written off", s)), lambda q, c: _writeoffs(q, c)),
+    ("linkclick", lambda s: bool(re.search(r"payment links?", s)) and "click" in s, lambda q, c: _contact_metric(q, c, "link_click")),
     ("collected", lambda s: bool(re.search(r"paid against promises|amount collected|how much did we collect|dollars collected", s)),
      lambda q, c: _collected(q, c)),
     ("promise", lambda s: bool(re.search(r"promise|\bptp\b", s)) and bool(re.search(r"kept|keep|broken|break", s))
@@ -411,11 +457,13 @@ RULES = [
     ("ooh", lambda s: bool(re.search(r"outside (of )?(permitted|calling|allowed)|out of hours|outside .*hours", s)),
      lambda q, c: _contact_metric(q, c, "out_of_hours")),
     ("avg_dpd", lambda s: bool(re.search(r"average (days past due|dpd)|mean dpd", s)), lambda q, c: _case_metric(q, c, "avg_dpd")),
+    ("days_to_cure", lambda s: bool(re.search(r"(days|time) to cure|(average|mean)\b.*\bcure", s)),
+     lambda q, c: _case_metric(q, c, "avg_days_to_cure")),
     ("cure", lambda s: "cure" in s, lambda q, c: _case_metric(q, c, "cure_rate")),
     ("hardship", lambda s: bool(re.search(r"hardship (rate|share)", s)), lambda q, c: _case_metric(q, c, "hardship_rate")),
     ("delinq", lambda s: "delinquen" in s or ("days past due" in s and ("today" in s or "active" in s)),
      lambda q, c: _delinquency(q, c)),
-    ("open", lambda s: "open" in s and "case" in s and bool(re.search(r"how many|number of|count", s)),
+    ("open", lambda s: "open" in s and "case" in s and bool(re.search(r"how many|number of|count|overdue|amount owed", s)),
      lambda q, c: _case_metric(q, c, "open_cases")),
 ]
 
@@ -432,7 +480,7 @@ def plan(question: str, ctx: Ctx) -> Plan | None:
     s = question.lower()
     for name, pred, build in RULES:
         if pred(s):
-            if name not in ("explain", "disputes", "roll", "writeoff", "collected") and \
+            if name not in ("explain", "disputes", "roll", "writeoff", "collected", "linkclick") and \
                     unsupported_breakdown(question, detect_dimension(question)):
                 return None
             return build(question, ctx)

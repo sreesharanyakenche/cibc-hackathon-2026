@@ -20,10 +20,10 @@ and every recommendation is stored as a tamper-evident Decision Record.
 |---|---|
 | Identity (Layer 1) | 1,020,000 CRM records resolve to 1,000,729 customers; 98.3% of 1,844,500 source accounts auto-linked, 3,547 withheld for review. **Precision 99.84%, recall 97.4%**, measured on the 283,851 accounts the collections system itself linked to a customer (contacted or promised on, not a random sample). 97.9% of declared CRM duplicates merged. |
 | Data quality | [Report](outputs/DATA_QUALITY_REPORT.md): every number measured live; 8 of 8 error-severity checks pass. Findings include 156,837 deposit CIFs that lost leading zeros (20.1%), 4 snapshot date formats, a column renamed mid-release, 2.8% orphan customer references. Nothing dropped, nothing imputed. |
-| Ask the data (Layer 2) | **21/21** dev benchmark questions pass our approximation of the scorer. All 35 released questions answered or refused in [outputs/benchmark_answers.csv](outputs/benchmark_answers.csv) (6 refused). Test-split answers are hidden, so the real score is unknown. |
+| Ask the data (Layer 2) | **21/21** dev benchmark questions pass our approximation of the scorer. All 50 questions (the 35 released plus the 15 extra ones released at 19:00) are answered or refused in [outputs/benchmark_answers.csv](outputs/benchmark_answers.csv) (9 refused), produced by one unedited run of the system. Test-split and extra-question gold answers are hidden, so the real score is unknown. |
 | Model (Layer 4) | LightGBM, calibrated: held-out **AUC 0.6445**, calibration error 0.041. **It does not beat the incumbent** `ptp_break v2.1` (0.712 against our 0.670 on the same 16,531 promises). Use it to rank and choose light-touch actions, not as a strong predictor. |
 | Review load | Human review required on about 14% of open promises (400 random). Low-trust identity adds 0.8% of the queue. |
-| Tests | 140 tests pass (about 7 minutes on the real data). |
+| Tests | 152 tests pass (about 4 to 7 minutes on the real data). |
 
 ## Run it
 
@@ -81,7 +81,7 @@ The API process is the only writer of `warehouse/decisions.duckdb`: stop it befo
 
 ```powershell
 python -m insight.benchmark --score                                  # writes outputs/benchmark_answers.csv, scores the dev split
-python -m insight.benchmark --questions <extra.csv> --out outputs/benchmark_answers_extra.csv   # the 19:00 questions
+python -m insight.benchmark --questions <released+extra questions.csv> --out outputs/benchmark_answers.csv   # all 50 in one run (same columns as benchmark_questions.csv)
 python -m pytest tests -q
 ```
 
@@ -143,7 +143,7 @@ H3 and H4 (Context Card, contact budget) are untested.
 * **The model is weak** (AUC 0.6445) and below the incumbent. The top two bands over-predict by 5 to 7 points; scores above 0.90 rest on few validation promises.
 * **Assumptions not stated in any provided document:** risk bands 0.50 / 0.65 / 0.75, the 0.70 identity-trust review threshold, the case-stage rule (no direct contact on agency, legal, charged-off or settled cases), four of the five holiday dates (30 Sep is documented), and the low-confidence triggers. All are recorded in each Decision Record or in [docs/decisioning.md](docs/decisioning.md).
 * **Identity precision is measured only on contacted or promised accounts.** Accounts outside that set have no ground truth. 28,481 accounts stay unmatched: 19,788 have no date of birth to block on, the rest had no candidate customer.
-* **Benchmark:** BQ-035 and BQ-017 follow the organisers' reference SQL by default (`insight/config.py: PREFER_CORRECTED = False`) although it hides a data trap; the corrected answer is one flag away and noted on the answer. BQ-020 is refused for lack of evidence and BQ-025 uses an assumed column.
+* **Benchmark:** BQ-035 and BQ-017 follow the organisers' reference SQL by default (`insight/config.py: PREFER_CORRECTED = False`) although it hides a data trap; the corrected answer is one flag away and noted on the answer. BQ-020 is refused for lack of evidence and BQ-025 uses an assumed column. Running the 15 extra questions exposed real gaps (a filter silently dropped, a different metric answered, protected-ground questions answered); we fixed the engine, added regression tests, and re-ran everything unedited. The extra-question definitions we chose (for example overdue = `total_overdue` on open cases, and SMS payment-link clicks counted only on SMS that carry a link) are assumptions: see [docs/insight_layer.md](docs/insight_layer.md).
 * **Not authenticated:** reviewer roles come from a demo directory. Do not read the audit trail as proof of who clicked.
 * `internal_do_not_call_flag` is not enforced (about 470 open promises; its meaning is not defined), and the national DNCL flag is correctly ignored for collection calls (POL-COLL-001 §5.3).
 * The evidence note shown with a decision is the note written at the promise's contact; it is not selected to support the three reasons and can contain remarks about protected grounds.
@@ -156,7 +156,7 @@ data_pipeline/       load_raw, curate, identity, c360, validation,      decision
                      data_contract, quality_report                      insight/      Layer 2 engine
 contracts/           data_contract.yaml (golden C360)                   models/       production model (+ labelled reference model)
 docs/                architecture, layer docs, demo walkthrough         outputs/      benchmark answers, data quality + identity reports
-tests/               140 tests                                          warehouse/    DuckDB files (git-ignored, rebuilt by the steps above)
+tests/               152 tests                                          warehouse/    DuckDB files (git-ignored, rebuilt by the steps above)
 ```
 
 ## Submission checklist

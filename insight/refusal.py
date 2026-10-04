@@ -22,12 +22,17 @@ class Refusal:
 
 PROTECTED = re.compile(
     r"\b(gender|sex|marital|married|single status|family status|citizenship|immigration|immigrant|newcomer|"
-    r"race|racial|ethnic\w*|religio\w*|national origin|household|accent|disabilit\w*|accessibilit\w*|"
+    r"race|racial|ethnic\w*|religio\w*|church\w*|mosque\w*|synagogue\w*|gurdwara\w*|worship\w*|national origin|household|accent|disabilit\w*|accessibilit\w*|"
     r"sexual orientation|indigenous)\b", re.I)
 POLICY_WORDS = re.compile(r"\b(policy|policies|allowed to|permitted|rule|rules|procedure|does the bank|what does)\b", re.I)
 DATA_INTENT = re.compile(
     r"\b(list|show|rank|sort|order|prioriti[sz]e|call first|target|segment|break ?down|breakdown|by|which customers|"
     r"score|split|compare|group|who|how many|rate|average|share|first)\b", re.I)
+
+VULNERABLE = re.compile(r"\bvulnerab\w*", re.I)
+LOWER_PRIORITY = re.compile(
+    r"\b(bottom of|move\w* (them )?(down|to the bottom|back)|deprioriti[sz]\w*|lower (their |the )?priority|"
+    r"call (them )?last|call less|skip|push\w* (them )?(down|back)|rank (them )?lower|drop (them )?(from|down))\b", re.I)
 
 PROXY_AREA = re.compile(r"\b(fsa|fsas|postal (area|code)s?|forward sortation|neighbou?rhood|zip ?codes?)\b", re.I)
 DECISION_VERB = re.compile(
@@ -58,6 +63,12 @@ def check(question: str) -> Refusal | None:
             "protected_attribute",
             f"'{term}' is a protected ground. Protected attributes must not be used in decisions, rankings or lists "
             f"(POL-COLL-004 §4.6); they are held only to test fairness.")
+
+    if VULNERABLE.search(q) and LOWER_PRIORITY.search(q):
+        return Refusal(
+            "vulnerability_not_a_risk_factor",
+            "Vulnerability is a safeguard, never a risk factor: it must not lower a customer's priority for help or be used "
+            "to predict repayment (POL-COLL-004 §4.5). Vulnerable customers go to a certified agent instead.")
 
     if PROXY_AREA.search(q) and DECISION_VERB.search(q):
         return Refusal(
