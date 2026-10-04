@@ -4,6 +4,7 @@ from datetime import date
 from data_pipeline.config import MAIN_DB, ROOT, WAREHOUSE  # noqa: F401
 
 FEATURE_DB = WAREHOUSE / "features.duckdb"      # derived tables (owned by this layer)
+C360_DB = WAREHOUSE / "c360.duckdb"            # golden Customer 360 + identity links (built by data_pipeline)
 DECISIONS_DB = WAREHOUSE / "decisions.duckdb"   # Decision Records + human reviews (append-only)
 MODEL_DIR = ROOT / "models"
 MODEL_NAME = "ptp_break"
@@ -18,6 +19,9 @@ AS_OF = date(2026, 9, 28)                        # snapshot date
 TRAIN_END = date(2026, 6, 30)        # due <= this: training
 VALID_END = date(2026, 8, 15)        # (TRAIN_END, VALID_END]: early stopping + calibration
 # due > VALID_END: held-out test
+
+# ---- identity (ASSUMPTION: no document gives a trust threshold) --------------------------------------------
+IDENTITY_TRUST_REVIEW = 0.70    # C360 trust_score below this: a human confirms identity before any contact
 
 # ---- action policy (ASSUMPTION: the documents say thresholds/budgets are 'set by policy', none are given) -------
 BANDS = (0.50, 0.65, 0.75)      # calibrated break probability: low < 0.50 <= medium < 0.65 <= high < 0.75 <= very_high

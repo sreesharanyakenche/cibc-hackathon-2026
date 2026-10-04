@@ -26,7 +26,10 @@ import dataclasses
 import json
 import re
 import subprocess
+import threading
 from datetime import date, datetime, timedelta
+
+import duckdb
 
 from . import actions, config, features as F, gates
 from .gates import ALL_ACTIONS, CONTACT_ACTIONS, Context, contact_slot
@@ -75,6 +78,8 @@ class Decisioner:
         self.con = F.connect(read_only=True)
         self.model = PtpModel("v1")
         self.store = store or RecordStore()
+        self._c360 = duckdb.connect(str(config.C360_DB), read_only=True) if config.C360_DB.exists() else None
+        self._c360_lock = threading.Lock()
         self.thresholds = thresholds
         self.role_directory = role_directory
         self.code_commit = _git_commit()
@@ -112,7 +117,8 @@ class Decisioner:
         reasons = self.model.reasons(feats, k=3)[0]
         row = feats.to_dicts()[0]
         raw = self._context_rows(ptp_id, as_of)
-        ctx = self._build_context(row, raw, as_of, risk, hardship_confirmed)
+        ident = self.identity_for(raw["crm_customer_id"])
+        ctx = self._build_context(row, raw, as_of, risk, hardship_confirmed, ident)
         results = gates.run_gates(ctx)
         allowed = gates.allowed_actions(results)
         choice = actions.choose(ctx, results)
@@ -137,8 +143,14 @@ class Decisioner:
             "risk_note": "Calibrated probability that the promise breaks, from a model that does not use promised-amount "
                          "features (see docs/decisioning.md: those fields look generated after the outcome).",
             "identity": {"customer_found": ctx.customer_found, "flagged_duplicate_or_deleted": ctx.duplicate_record,
-                         "match_confidence": None,
-                         "note": "Identity resolution (C360) is not wired in; only the duplicate / deleted flags are checked."},
+                         "customer_key": ident["customer_key"] if ident else None,
+                         "match_confidence": ident["match_confidence"] if ident else None,
+                         "trust_score": ident["trust_score"] if ident else None,
+                         "conflict_flags": ident["conflict_flags"] if ident else [],
+                         "shared_mobile_blocked": ident["shared_mobile_blocked"] if ident else None,
+                         "trust_review_threshold": config.IDENTITY_TRUST_REVIEW,
+                         "note": "Golden C360 identity (data_pipeline.c360); trust below the threshold routes to human review."
+                                 if ident else "Golden C360 not available for this customer; only the duplicate / deleted flags are checked."},
             "hardship_status": hs, "hardship_confirmed_by": confirmed_by,
             "gates": [g.as_dict() for g in results], "allowed_actions": sorted(allowed),
             "ranking": choice.ranked, "recommended_action": choice.action, "action_label": ACTION_LABEL[choice.action],
@@ -277,7 +289,21 @@ class Decisioner:
         out.sort(key=lambda p: (p["approver"] != "agent", p["program_id"]))
         return out
 
-    def _build_context(self, row: dict, raw: dict, as_of: date, risk: float, hardship_confirmed: bool) -> Context:
+    def identity_for(self, crm_customer_id: str | None) -> dict | None:
+        """Golden C360 identity summary for a CRM id (resolves merged duplicates), or None if C360 is unavailable."""
+        if self._c360 is None or not crm_customer_id:
+            return None
+        with self._c360_lock:
+            r = self._c360.execute(
+                "select c.customer_key, c.match_confidence, c.trust_score, c.identity_basis, c.shared_mobile_blocked, c.conflict_flags, "
+                "c.n_crm_records, c.n_linked_accounts from id_crm_clusters k join c360 c using (customer_key) "
+                "where k.crm_customer_id = ?", [crm_customer_id]).fetchone()
+        if r is None:
+            return None
+        return {"customer_key": r[0], "match_confidence": float(r[1]), "trust_score": float(r[2]), "identity_basis": r[3],
+                "shared_mobile_blocked": r[4], "conflict_flags": list(r[5] or []), "n_crm_records": r[6], "n_linked_accounts": r[7]}
+
+    def _build_context(self, row: dict, raw: dict, as_of: date, risk: float, hardship_confirmed: bool, ident: dict | None = None) -> Context:
         miss = sum(1 for n in F.MODEL_FEATURE_NAMES if row.get(n) is None) / len(F.MODEL_FEATURE_NAMES)
         rule = self.rule_sets.get(raw["contact_rule_set"] or "", {})
         found = raw["u_id"] is not None
@@ -306,6 +332,9 @@ class Decisioner:
             consent_email=bool(raw["consent_email"]) if found else False,
             sunday_rule=sunday, preferred_language=raw["preferred_language"],
             customer_found=found, duplicate_record=bool(raw["duplicate_of_crm_id"]) or bool(raw["is_deleted"]),
+            identity_trust=ident["trust_score"] if ident else None,
+            identity_low_trust=bool(ident and ident["trust_score"] is not None and ident["trust_score"] < config.IDENTITY_TRUST_REVIEW),
+            identity_conflicts=ident["conflict_flags"] if ident else [],
             hardship_text=bool(row.get("g_hardship_text")), hardship_confirmed=hardship_confirmed,
             missing_feature_share=miss, features_audit=gates.model_audit())
         hs = gates.hardship_status(ctx)

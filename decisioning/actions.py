@@ -109,13 +109,13 @@ def review_triggers(ctx: Context, results: list[GateResult], choice: Choice, thr
     lead = ctx.eligible_programmes[0] if ctx.eligible_programmes else None
     needs_approval = choice.action == "offer_hardship_plan" and lead is not None and lead.get("approver") != "agent"
     audit_failed = any(r.gate == "protected_attribute_block" and r.status != "pass" for r in results)
-    identity_issue = bool(ctx.duplicate_record or not ctx.customer_found)
+    identity_issue = bool(ctx.duplicate_record or not ctx.customer_found or ctx.identity_low_trust)
 
     def t(name, fired, why, kind="review"):
         return {"trigger": name, "fired": bool(fired), "why": why if fired else "ok", "kind": kind}
 
     return [
-        t("uncertain_identity", identity_issue, "customer record is missing or flagged duplicate/deleted"),
+        t("uncertain_identity", identity_issue, "customer record is missing, flagged duplicate/deleted, or the C360 identity trust score is low"),
         t("possible_hardship", hs == "possible", "unconfirmed hardship signal (model-sourced flag or note wording)"),
         t("low_model_confidence", ctx.missing_feature_share >= min_missing or ctx.risk > tail_risk,
           f"{ctx.missing_feature_share:.0%} of model features are missing" if ctx.missing_feature_share >= min_missing

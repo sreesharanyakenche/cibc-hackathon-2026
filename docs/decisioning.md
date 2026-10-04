@@ -1,17 +1,19 @@
 # Layer 3/4: feature registry, PTP-break model, policy gates, decisions
 
-Status: library only (no API or UI yet). Everything below was measured on the synthetic dataset; "assumption" marks anything the provided
+Status: library, served by the demo API and UI in `app/` and `frontend/` (see `docs/architecture.md`). Layer 1's golden Customer 360 now feeds the identity gate (see below). Everything below was measured on the synthetic dataset; "assumption" marks anything the provided
 documents do not state.
 
 ## Run
 ```
-.venv\Scripts\python -m decisioning.train       # builds derived tables, trains + calibrates, writes models/ and reports AUCs
+# derived tables only (14 s, no retraining; identical to the original up to float summation order, max 2e-10):
+.venv\Scripts\python -c "from decisioning import features as F; F.build_derived_tables(F.connect())"
+.venv\Scripts\python -m decisioning.train       # builds derived tables, trains + calibrates, OVERWRITES models/ and reports AUCs
 .venv\Scripts\python -m decisioning.fairness    # disparity check -> docs/fairness_check.md
 .venv\Scripts\python -m pytest tests -q
 ```
 ```python
 from decisioning.orchestrator import Decisioner
-d = Decisioner()                                     # optional: role_directory={"REV-17": "reviewer"} to bind reviewer ids to roles
+d = Decisioner()                                     # needs warehouse/c360.duckdb for the identity block (without it identity is None and only the duplicate flags apply); optional: role_directory={"REV-17": "reviewer"} to bind reviewer ids to roles
 d.upcoming(days=3, limit=25)                         # whole horizon scored, riskiest first (limit=None for everything)
 rec = d.recommend("PTP-5511630")                     # score -> gates -> ranking -> explanation -> hash-chained Decision Record
 d.review(rec["decision_id"], "REV-17", "reviewer", "accept", reason="agreed")
@@ -50,7 +52,7 @@ customer; output goes to a human. The LLM has no role in Layer 4.
   and 328,520 accounts (about 20%) map to more than one CRM id (mostly joint holders; only about 5% of such pairs are flagged duplicates).
   When a CIF maps to several CRM ids the lowest id is used, and when two CIFs of one CRM id both have a bureau pull on the same date the lowest CIF wins
   (this replaced an arbitrary pick). About 45% of promises have bureau / transaction coverage.
-  The identity-resolution work (Layer 1) is a separate task and is not wired in.
+  This bridge is separate from Layer 1's identity matching: the model's bureau and transaction features still use it, while the identity gate and Decision Record use the golden C360 (`docs/layer1_identity_c360.md`). Moving these features onto the C360 links is not done.
 
 ## IMPORTANT FINDING: the promised-amount fields look generated after the outcome
 `ptp_to_overdue_ratio` and `ptp_amount` give AUC 0.963 on the held-out window, but they are excluded from the production model:
@@ -116,7 +118,7 @@ Gates run in a fixed order and can only restrict the allowed actions or demand h
 | representative | counsellor / lawyer / POA: no direct contact | POL-COLL-001 §5.4 |
 | **case stage** | case placed with an agency, in legal handling (status, `legal_referral_flag` or a `legal_status`), charged off, settled, or otherwise not an active in-house case: no direct contact | **engineering rule: no provided document states it** |
 | open dispute | no payment-request actions | PRC-COLL-012 §6.1 |
-| identity & data quality | missing / duplicate-flagged customer record, over half the features missing -> human review (flag only) | |
+| identity & data quality | missing or duplicate-flagged customer record, **golden C360 trust score below 0.70** (`config.IDENTITY_TRUST_REVIEW`, an assumption), over half the features missing -> human review (flag only) | Layer 1, `docs/layer1_identity_c360.md` |
 | hardship (route-only) | see statuses below | POL-COLL-004 §4.2, §4.4 |
 | vulnerability | safeguard: certified agent; never a risk input | POL-COLL-004 §4.5 |
 | consent | no servicing consent for a channel removes it | POL-COLL-001 §5.3 |
@@ -131,7 +133,7 @@ Evidence for the case-stage rule: among the 33,005 open promises, 331 are on `pl
 contact (§4.4) and the recommendation is no action. Hardship can only soften treatment, never add contact. "Recorded" is our term: it is not Round 1's "confirmed".
 
 **Review triggers (v2).** `review_required` is true only for triggers of kind *review*; vulnerable-customer routing is kind *routing* (the action already hands the case to a person).
-* uncertain identity: customer missing or flagged duplicate / deleted; possible hardship: status `possible` only;
+* uncertain identity: customer missing, flagged duplicate / deleted, or C360 trust score below 0.70 (269 of 32,106 open promises, 0.8%; risk and action are unchanged, only a review is added); possible hardship: status `possible` only;
 * low model confidence: 30% or more of model features missing, or risk above 0.90 (the calibration tail) - both thresholds are assumptions; closeness to a band edge no longer counts (35% of scores sit within 0.02 of an edge, so it carried no information) and is reported as `band_stability`;
 * policy conflict: high risk, no hard stop, yet every contact the band calls for is blocked by consent, budget or dispute;
 * high-impact action: the lead hardship option needs approval above agent level; insufficient data quality: over half the features missing; fairness / proxy: feature audit failed; conflicting agent outputs: not evaluated (single recommender).
@@ -181,5 +183,5 @@ Vulnerable customers are routed to certified agents by the gate, not scored hard
 * "Accounts are at X% of limit/original amount" is a mixed measure over all products, not card utilisation.
 * Calibration over-predicts the top bands by 5-7 points; scores above 0.90 are thin.
 * Text features are regexes on one note; customers without a note have missing text features. Other regexes (for example `try to`, `paid on`) are unanchored and not audited.
-* Identity: the gate only checks the duplicate / deleted flags; there is no match confidence, shared-phone block or Trust Score (Layer 1 is not built).
-* The test suite takes about 7 minutes (it uses the real data); it also writes `outputs/benchmark_answers.csv` through the Layer 2 tests.
+* Identity: the gate uses the golden C360 trust score and the duplicate / deleted flags. The 0.70 threshold is an assumption. The record stores `customer_key`, `match_confidence`, `trust_score` and conflict flags; customers the C360 cannot resolve are treated as missing, not as low trust.
+* The full test suite (140 tests, about 7 minutes, real data) also rewrites `outputs/benchmark_answers.csv` through the Layer 2 tests. Stop the API before running it: the API process holds the write lock on `warehouse/decisions.duckdb`.

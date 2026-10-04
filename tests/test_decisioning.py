@@ -278,6 +278,12 @@ def test_triggers_that_should_demand_review():
     assert "uncertain_identity" in fired(c, res, ch)
     c, res, ch = decide(risk=0.6, customer_found=False)
     assert "uncertain_identity" in fired(c, res, ch)
+    c, res, ch = decide(risk=0.6, identity_trust=0.55, identity_low_trust=True, identity_conflicts=["shared_mobile"])
+    assert "uncertain_identity" in fired(c, res, ch)
+    gate = next(r for r in res if r.gate == "identity_and_data_quality")
+    assert gate.status == "review" and "0.55" in gate.detail
+    c, res, ch = decide(risk=0.6, identity_trust=0.97, identity_low_trust=False)
+    assert "uncertain_identity" not in fired(c, res, ch)
     c, res, ch = decide(risk=0.6, missing_feature_share=0.35)
     assert "low_model_confidence" in fired(c, res, ch) and "insufficient_data_quality" not in fired(c, res, ch)
     c, res, ch = decide(risk=0.6, missing_feature_share=0.55)
@@ -371,7 +377,9 @@ def test_recommend_returns_a_complete_hardened_decision_record(dec):
     assert set(rec["feature_vector"]["model"]) == set(F.MODEL_FEATURE_NAMES)    # replayable: every model input is stored
     assert "txn_benefit_3m" not in rec["feature_vector"]["model"] and "txn_benefit_3m" in rec["feature_vector"]["gate_only_and_excluded"]
     assert rec["context_snapshot"]["case_status"] and "consent_sms" in rec["context_snapshot"]
-    assert rec["identity"]["match_confidence"] is None and "not wired" in rec["identity"]["note"]
+    ident = rec["identity"]                                                     # Golden C360 identity is part of the record
+    assert ident["customer_key"] and 0 < ident["match_confidence"] <= 1 and 0 <= ident["trust_score"] <= 1
+    assert ident["trust_review_threshold"] == config.IDENTITY_TRUST_REVIEW and rec["context_snapshot"]["identity_trust"] == ident["trust_score"]
     assert len(rec["explanation"]["top_reasons"]) == 3 and rec["explanation"]["what_would_change_this"]
     assert "callback" not in " ".join(rec["explanation"]["what_would_change_this"]).lower()
     assert rec["recommended_action"] in rec["allowed_actions"]

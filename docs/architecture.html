@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CodeBlooded architecture</title>
+<style>
+  @page { size: 1500px 830px; margin: 0 }
+  * { box-sizing: border-box }
+  body { margin: 0; width: 1500px; height: 830px; background: #ffffff; color: #14213d; font: 14px/1.35 "Segoe UI", system-ui, Arial, sans-serif; padding: 26px 34px }
+  h1 { margin: 0; font-size: 26px } .sub { color: #5b6784; margin: 2px 0 14px }
+  .row { display: grid; gap: 14px; margin-bottom: 12px }
+  .box { border: 1.5px solid #c9d3ea; border-radius: 12px; padding: 10px 14px; background: #f7f9fe }
+  .box h3 { margin: 0 0 4px; font-size: 15px } .box p { margin: 2px 0; font-size: 12.5px } .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 99px; margin-left: 6px; vertical-align: 1px }
+  .data { background: #eef3ff; border-color: #aac0f5 } .rule { background: #e9f7ef; border-color: #9bd4b2 } .ai { background: #f3ecff; border-color: #c8aef5 }
+  .human { background: #fff4dc; border-color: #f0c870 } .store { background: #eef1f7; border-color: #b7c0d6 } .ui { background: #e7f6fb; border-color: #9fd3e6 }
+  .t-data { background: #cfe0ff; color: #0b3fa8 } .t-rule { background: #c7ecd6; color: #11743d } .t-ai { background: #e2d3fb; color: #5a22b8 } .t-human { background: #fde4a8; color: #8a5a00 }
+  .arrow { text-align: center; color: #5b6784; font-size: 18px; line-height: 14px; margin: -2px 0 2px }
+  .legend { display: flex; gap: 18px; font-size: 12px; margin-top: 6px; color: #3c4966 } .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; border: 1px solid #8a96b5 }
+  .band { font-weight: 700; letter-spacing: .05em; font-size: 11px; color: #5b6784; text-transform: uppercase; margin: 8px 0 4px }
+  .gov { border: 1.5px dashed #8a96b5; border-radius: 12px; padding: 8px 14px; font-size: 12.5px; color: #26324f; background: #fcfcfe }
+</style>
+</head>
+<body>
+<h1>CodeBlooded: from customer data to the right next action</h1>
+<div class="sub">PTP-break prevention and next best action · Maple Bank synthetic data (snapshot 2026-09-28) · as built</div>
+
+<div class="band">Sources</div>
+<div class="row" style="grid-template-columns: 1.4fr 1fr 1fr">
+  <div class="box data"><h3>Five source systems <span class="tag t-data">data</span></h3><p>CRM · Cards · Lending · Core deposits · Collections (cases, promises, contacts, agent notes) · bureau file · 6 Parquet history tables · 25,000 call transcripts. <b>No shared customer key.</b></p></div>
+  <div class="box data"><h3>Policy documents <span class="tag t-data">data</span></h3><p>19 policy / procedure / FAQ documents with versions and authority levels.</p></div>
+  <div class="box data"><h3>Warehouse (DuckDB) <span class="tag t-data">data</span></h3><p><code>raw_*</code> typed, IDs as text → <code>cur_*</code> views (data traps fixed once) → <code>c360.duckdb</code>, <code>features.duckdb</code>, <code>decisions.duckdb</code></p></div>
+</div>
+<div class="arrow">▼</div>
+
+<div class="row" style="grid-template-columns: 1.15fr 1fr 1.05fr 1.25fr; align-items: stretch">
+  <div class="box rule"><h3>L1 · Data product <span class="tag t-rule">rules</span></h3>
+    <p><b>Identity matching:</b> CRM duplicates merged only on strong evidence; accounts linked by DOB + name + postal + phone, tiers A–E, per-field evidence, match confidence.</p>
+    <p><b>Shared-mobile block</b> (phone never decisive alone) · <b>conflicts kept</b> side by side · <b>trust score</b></p>
+    <p>→ golden <b>Customer 360</b> (1,000,729 customers, 93 fields) · data contract · quality report</p>
+    <p style="color:#11743d"><b>Precision 99.84% · recall 97.4%</b> (on collections-linked accounts)</p></div>
+  <div class="box rule"><h3>L2 · Insight <span class="tag t-rule">rules</span><span class="tag t-ai">LLM optional</span></h3>
+    <p>Refusal rules (protected attribute, proxy, PII, off-topic) → transcript summary → <b>certified SQL templates</b> → BM25 policy retrieval with citations → optional LLM planner (off) → refuse.</p>
+    <p>Every SQL passes a <b>sqlglot guard</b>: one SELECT, allow-listed views, no PII or protected columns, read-only, row cap.</p>
+    <p style="color:#11743d"><b>Dev benchmark 21/21</b> · 35 answers, 6 refused</p></div>
+  <div class="box rule"><h3>L3 · Features <span class="tag t-rule">rules</span></h3>
+    <p><b>One registry</b> of SQL feature definitions, used for training and for live scoring (tested: batch = single-row).</p>
+    <p>Structured + text features from agent notes · point-in-time rules · each feature tagged <i>model / gate-only / excluded / diagnostic</i> · <b>audit blocks</b> protected, proxy and outcome columns.</p></div>
+  <div class="box ai"><h3>L4 · Models &amp; decisioning <span class="tag t-ai">1 ML model</span><span class="tag t-rule">rules</span></h3>
+    <p><b>LightGBM</b>, isotonic-calibrated: one number, the break risk (AUC 0.6445; below the incumbent's 0.712).</p>
+    <p><b>Ordered policy gates</b> (protected block · hard stop · representative · case stage · dispute · <b>identity</b> · hardship · vulnerability · consent · contact budget · payment received) restrict what is allowed.</p>
+    <p>Rank actions (incl. <b>no action</b>) → review triggers → explanation: 3 reasons, evidence, what would change it, policy citations.</p></div>
+</div>
+<div class="arrow">▼</div>
+
+<div class="row" style="grid-template-columns: 1.1fr 1fr 1fr">
+  <div class="box store"><h3>Decision Record <span class="tag t-rule">append-only</span></h3><p>Per recommendation: feature vector, gate inputs, model file hash, thresholds, holiday calendar, code commit, identity (C360). <b>Hash-chained</b>; verified on read.</p></div>
+  <div class="box human"><h3>Human review <span class="tag t-human">person decides</span></h3><p><b>Accept · change · escalate</b>, with a reason. Gates <b>re-checked at review time</b>: an override can never breach one. Hardship confirmation (reviewer roles only) writes a new, softer linked record. Every attempt, including refused ones, is logged.</p></div>
+  <div class="box human"><h3>Review triggers <span class="tag t-human">risk-based</span></h3><p>Uncertain identity (C360 trust &lt; 0.70) · possible hardship · low model confidence · policy conflict · high-impact action · insufficient data · fairness audit failure. About 14% of open promises need review.</p></div>
+</div>
+<div class="arrow">▼</div>
+
+<div class="row" style="grid-template-columns: 1fr 1.6fr">
+  <div class="box ui"><h3>API · <code>app/main.py</code> (FastAPI)</h3><p>Thin layer: strict request schemas, structured errors, request ids. <b>Nothing in it decides anything.</b> Serves the built UI.</p><p><code>/customers</code> · <code>/promises/upcoming</code> · <code>/recommend</code> · <code>/decisions/{id}/review</code> · <code>/audit/verify</code> · <code>/ask</code></p></div>
+  <div class="box ui"><h3>UI · React + Vite <span class="tag t-human">agent desktop</span></h3><p><b>Agent queue</b> (promises due soon, scored, riskiest first) · <b>Customer 360</b> (identity evidence, linked accounts, conflicts) · <b>Decision</b> (recommendation, why, gates, review panel, history) · <b>Ask the data</b> (answer + SQL or sources, or a refusal) · <b>Decisions &amp; audit</b> (hash-chain check)</p></div>
+</div>
+
+<div class="gov"><b>Governance, all layers:</b> protected attributes excluded from the C360, the model and risk logic (audited) · hardship can only soften treatment · "no action" is a valid answer · the model supplies one number, everything that decides what may happen to a customer is rule-based and logged · PII and protected columns blocked in Insight · lineage raw → curated → C360 → feature → decision · reviewer roles are a demo directory, not real authentication.</div>
+
+<div class="legend"><span><i style="background:#eef3ff"></i>Data / services</span><span><i style="background:#e9f7ef"></i>Deterministic rules</span><span><i style="background:#f3ecff"></i>AI / ML component</span><span><i style="background:#fff4dc"></i>Human</span><span><i style="background:#eef1f7"></i>Audit store</span><span><i style="background:#e7f6fb"></i>Interface</span></div>
+</body>
+</html>

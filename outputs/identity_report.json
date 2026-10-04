@@ -1,0 +1,73 @@
+{
+ "generated_utc": "2026-10-04 11:45",
+ "conf_by_tier": {
+  "A": 0.97,
+  "B": 0.9,
+  "C": 0.88,
+  "D": 0.65,
+  "E": 0.6
+ },
+ "crm_pairs_by_decision": {
+  "merge / national_id_hash+dob": 23993,
+  "conflict / national_id_hash_differs": 2658,
+  "merge / dob+name+postal+phone": 835,
+  "review / insufficient_evidence": 827,
+  "merge / declared_pointer+3_corroborating_fields": 360
+ },
+ "crm_pairs_by_block": {
+  "dob_name_postal+national_id_hash": 14759,
+  "declared_pointer": 5950,
+  "dob_name_postal": 4227,
+  "national_id_hash": 3737
+ },
+ "crm_clusters_over_limit_not_merged": 0,
+ "crm_records": 1020000,
+ "customer_keys": 1000729,
+ "crm_records_in_merged_clusters": 38542,
+ "max_cluster_size": 2,
+ "shared_mobile_phones_2plus_people": 4662,
+ "shared_mobile_phones_3plus_people": 10,
+ "source_accounts": {
+  "LENDING": 404500,
+  "CARDS": 660000,
+  "CORE": 780000
+ },
+ "source_accounts_without_dob": {
+  "CORE": 15756,
+  "LENDING": 4032
+ },
+ "source_identity_tuples": 2632694,
+ "accounts_total": 1844500,
+ "links_by_status": {
+  "linked": 1811120,
+  "unmatched": 28481,
+  "review": 2840,
+  "linked_with_alternatives": 1352,
+  "ambiguous": 707
+ },
+ "links_by_system_status": {
+  "CARDS/linked": 645152,
+  "CARDS/unmatched": 13205,
+  "CARDS/review": 1251,
+  "CARDS/ambiguous": 318,
+  "CARDS/linked_with_alternatives": 74,
+  "CORE/linked": 774015,
+  "CORE/unmatched": 4338,
+  "CORE/linked_with_alternatives": 1278,
+  "CORE/ambiguous": 286,
+  "CORE/review": 83,
+  "LENDING/linked": 391953,
+  "LENDING/unmatched": 10938,
+  "LENDING/review": 1506,
+  "LENDING/ambiguous": 103
+ },
+ "links_by_tier": {
+  "-": 28481,
+  "A": 767691,
+  "B": 727430,
+  "C": 318058,
+  "D": 468,
+  "E": 2372
+ },
+ "seconds": 87
+}

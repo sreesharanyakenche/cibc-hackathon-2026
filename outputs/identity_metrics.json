@@ -1,0 +1,177 @@
+{
+ "generated_utc": "2026-10-04 11:55",
+ "by_tier": [
+  {
+   "tier": "-",
+   "candidates": 28481,
+   "auto_linked": 0,
+   "withheld": 0,
+   "evaluable": 6196,
+   "evaluable_auto_linked": 0,
+   "correct": 0,
+   "precision_pct": null,
+   "share_of_evaluable_correctly_linked_pct": 0.0,
+   "evaluable_withheld": 0,
+   "withheld_would_have_been_correct": 0,
+   "withheld_candidate_accuracy_pct": null
+  },
+  {
+   "tier": "A",
+   "candidates": 767691,
+   "auto_linked": 767490,
+   "withheld": 201,
+   "evaluable": 183742,
+   "evaluable_auto_linked": 183699,
+   "correct": 183401,
+   "precision_pct": 99.84,
+   "share_of_evaluable_correctly_linked_pct": 64.61,
+   "evaluable_withheld": 43,
+   "withheld_would_have_been_correct": 26,
+   "withheld_candidate_accuracy_pct": 60.47
+  },
+  {
+   "tier": "B",
+   "candidates": 727430,
+   "auto_linked": 727197,
+   "withheld": 233,
+   "evaluable": 27718,
+   "evaluable_auto_linked": 27706,
+   "correct": 27669,
+   "precision_pct": 99.87,
+   "share_of_evaluable_correctly_linked_pct": 9.75,
+   "evaluable_withheld": 12,
+   "withheld_would_have_been_correct": 7,
+   "withheld_candidate_accuracy_pct": 58.33
+  },
+  {
+   "tier": "C",
+   "candidates": 318058,
+   "auto_linked": 317785,
+   "withheld": 273,
+   "evaluable": 65489,
+   "evaluable_auto_linked": 65451,
+   "correct": 65354,
+   "precision_pct": 99.85,
+   "share_of_evaluable_correctly_linked_pct": 23.02,
+   "evaluable_withheld": 38,
+   "withheld_would_have_been_correct": 18,
+   "withheld_candidate_accuracy_pct": 47.37
+  },
+  {
+   "tier": "D",
+   "candidates": 468,
+   "auto_linked": 0,
+   "withheld": 468,
+   "evaluable": 99,
+   "evaluable_auto_linked": 0,
+   "correct": 0,
+   "precision_pct": null,
+   "share_of_evaluable_correctly_linked_pct": 0.0,
+   "evaluable_withheld": 99,
+   "withheld_would_have_been_correct": 90,
+   "withheld_candidate_accuracy_pct": 90.91
+  },
+  {
+   "tier": "E",
+   "candidates": 2372,
+   "auto_linked": 0,
+   "withheld": 2372,
+   "evaluable": 607,
+   "evaluable_auto_linked": 0,
+   "correct": 0,
+   "precision_pct": null,
+   "share_of_evaluable_correctly_linked_pct": 0.0,
+   "evaluable_withheld": 607,
+   "withheld_would_have_been_correct": 606,
+   "withheld_candidate_accuracy_pct": 99.84
+  }
+ ],
+ "overall": {
+  "accounts": 1844500,
+  "auto_linked": 1812472,
+  "withheld": 3547,
+  "unmatched": 28481,
+  "auto_link_rate_all_accounts_pct": 98.26,
+  "evaluable_accounts": 283851,
+  "evaluable_auto_linked": 276856,
+  "evaluable_correct": 276424,
+  "evaluable_withheld": 799,
+  "evaluable_unmatched": 6196,
+  "auto_link_rate_evaluable_pct": 97.54,
+  "precision_evaluable_pct": 99.84,
+  "recall_evaluable_pct": 97.38,
+  "accounts_with_conflicting_truth_excluded": 215
+ },
+ "strict_views": {
+  "truth_crm_record_is_singleton (independent of CRM merges)": {
+   "evaluable": 278273,
+   "auto_linked": 271396,
+   "correct": 270993,
+   "precision_pct": 99.85
+  },
+  "truth_crm_record_is_in_a_merged_cluster": {
+   "evaluable": 5578,
+   "auto_linked": 5460,
+   "correct": 5431,
+   "precision_pct": 99.47
+  }
+ },
+ "by_source_system": {
+  "CARDS": {
+   "accounts": 660000,
+   "auto_linked_all": 645226,
+   "evaluable": 147309,
+   "evaluable_auto_linked": 143926,
+   "correct": 143712,
+   "precision_pct": 99.85
+  },
+  "CORE": {
+   "accounts": 780000,
+   "auto_linked_all": 775293,
+   "evaluable": 29634,
+   "evaluable_auto_linked": 29433,
+   "correct": 29394,
+   "precision_pct": 99.87
+  },
+  "LENDING": {
+   "accounts": 404500,
+   "auto_linked_all": 391953,
+   "evaluable": 106908,
+   "evaluable_auto_linked": 103497,
+   "correct": 103318,
+   "precision_pct": 99.83
+  }
+ },
+ "representativeness": [
+  {
+   "tier": "-",
+   "share_of_all_accounts_pct": 1.54,
+   "share_of_evaluable_accounts_pct": 2.18
+  },
+  {
+   "tier": "A",
+   "share_of_all_accounts_pct": 41.62,
+   "share_of_evaluable_accounts_pct": 64.73
+  },
+  {
+   "tier": "B",
+   "share_of_all_accounts_pct": 39.44,
+   "share_of_evaluable_accounts_pct": 9.76
+  },
+  {
+   "tier": "C",
+   "share_of_all_accounts_pct": 17.24,
+   "share_of_evaluable_accounts_pct": 23.07
+  },
+  {
+   "tier": "D",
+   "share_of_all_accounts_pct": 0.03,
+   "share_of_evaluable_accounts_pct": 0.03
+  },
+  {
+   "tier": "E",
+   "share_of_all_accounts_pct": 0.13,
+   "share_of_evaluable_accounts_pct": 0.21
+  }
+ ]
+}

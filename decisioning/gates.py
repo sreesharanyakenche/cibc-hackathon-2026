@@ -83,6 +83,9 @@ class Context:
     preferred_language: str | None = None
     customer_found: bool = True
     duplicate_record: bool = False
+    identity_trust: float | None = None       # Golden C360 trust_score (None = C360 unavailable for this customer)
+    identity_low_trust: bool = False          # trust_score below config.IDENTITY_TRUST_REVIEW
+    identity_conflicts: list[str] = field(default_factory=list)
     # signals
     hardship_text: bool = False               # unconfirmed note-text signal
     hardship_confirmed: bool = False          # only a human reviewer in this system sets this
@@ -178,6 +181,9 @@ def run_gates(ctx: Context) -> list[GateResult]:
         dq.append("customer record not found")
     if ctx.duplicate_record:
         dq.append("customer record is flagged as a duplicate or deleted (identity uncertain)")
+    if ctx.identity_low_trust:
+        dq.append(f"identity trust score {ctx.identity_trust:.2f} is low"
+                  + (f" ({', '.join(ctx.identity_conflicts)})" if ctx.identity_conflicts else ""))
     if ctx.missing_feature_share > 0.5:
         dq.append(f"{ctx.missing_feature_share:.0%} of model features are missing")
     out.append(GateResult("identity_and_data_quality", "review" if dq else "pass",

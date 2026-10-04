@@ -1,0 +1,372 @@
+{
+ "generated_utc": "2026-10-04 12:00",
+ "tables": {
+  "account_monthly_snapshot": {
+   "rows": 12569692,
+   "cols": 16,
+   "null20": 4,
+   "null50": 1
+  },
+  "agent_notes": {
+   "rows": 760594,
+   "cols": 26,
+   "null20": 3,
+   "null50": 2
+  },
+  "agent_shifts": {
+   "rows": 15317,
+   "cols": 15,
+   "null20": 2,
+   "null50": 1
+  },
+  "agents": {
+   "rows": 1000,
+   "cols": 30,
+   "null20": 0,
+   "null50": 0
+  },
+  "benchmark_questions": {
+   "rows": 35,
+   "cols": 7,
+   "null20": 2,
+   "null50": 1
+  },
+  "bureau_history": {
+   "rows": 4679562,
+   "cols": 10,
+   "null20": 0,
+   "null50": 0
+  },
+  "call_transcripts": {
+   "rows": 25000,
+   "cols": 29,
+   "null20": 1,
+   "null50": 1
+  },
+  "card_accounts": {
+   "rows": 660000,
+   "cols": 148,
+   "null20": 33,
+   "null50": 23
+  },
+  "card_statements": {
+   "rows": 7531283,
+   "cols": 26,
+   "null20": 2,
+   "null50": 2
+  },
+  "case_assignment_history": {
+   "rows": 423830,
+   "cols": 23,
+   "null20": 1,
+   "null50": 0
+  },
+  "channel_capacity": {
+   "rows": 287,
+   "cols": 11,
+   "null20": 4,
+   "null50": 2
+  },
+  "code_lookups": {
+   "rows": 113,
+   "cols": 7,
+   "null20": 2,
+   "null50": 2
+  },
+  "collections_cases": {
+   "rows": 367229,
+   "cols": 132,
+   "null20": 44,
+   "null50": 32
+  },
+  "contact_history": {
+   "rows": 2688337,
+   "cols": 128,
+   "null20": 83,
+   "null50": 77
+  },
+  "customers": {
+   "rows": 1020000,
+   "cols": 148,
+   "null20": 35,
+   "null50": 21
+  },
+  "deposit_accounts": {
+   "rows": 780000,
+   "cols": 145,
+   "null20": 16,
+   "null50": 15
+  },
+  "external": {
+   "rows": 1000000,
+   "cols": 122,
+   "null20": 14,
+   "null50": 14
+  },
+  "geo_reference": {
+   "rows": 656,
+   "cols": 15,
+   "null20": 0,
+   "null50": 0
+  },
+  "hardship_programs": {
+   "rows": 18,
+   "cols": 21,
+   "null20": 2,
+   "null50": 2
+  },
+  "loan_accounts": {
+   "rows": 404500,
+   "cols": 135,
+   "null20": 43,
+   "null50": 26
+  },
+  "loan_instalments": {
+   "rows": 14832472,
+   "cols": 19,
+   "null20": 4,
+   "null50": 2
+  },
+  "metric_definitions": {
+   "rows": 15,
+   "cols": 14,
+   "null20": 0,
+   "null50": 0
+  },
+  "model_scores": {
+   "rows": 1718841,
+   "cols": 33,
+   "null20": 8,
+   "null50": 7
+  },
+  "offers": {
+   "rows": 40767,
+   "cols": 19,
+   "null20": 8,
+   "null50": 1
+  },
+  "ops_events": {
+   "rows": 6,
+   "cols": 10,
+   "null20": 1,
+   "null50": 0
+  },
+  "promises_to_pay": {
+   "rows": 238815,
+   "cols": 29,
+   "null20": 4,
+   "null50": 2
+  },
+  "qa_checklist": {
+   "rows": 10,
+   "cols": 10,
+   "null20": 0,
+   "null50": 0
+  },
+  "reference_documents": {
+   "rows": 19,
+   "cols": 17,
+   "null20": 3,
+   "null50": 3
+  },
+  "salary_credit_history": {
+   "rows": 6000000,
+   "cols": 11,
+   "null20": 2,
+   "null50": 0
+  },
+  "transactions": {
+   "rows": 12401924,
+   "cols": 25,
+   "null20": 8,
+   "null50": 6
+  },
+  "voice_samples": {
+   "rows": 2000,
+   "cols": 34,
+   "null20": 1,
+   "null50": 0
+  }
+ },
+ "row_count_mismatches_vs_schema": {},
+ "duplicates": {
+  "crm_records": 1020000,
+  "crm_declared_duplicates": 5950,
+  "crm_shared_national_id_hash_groups": 18496,
+  "crm_records_resolved_into_other_keys": 38542,
+  "customer_keys": 1000729,
+  "declared_duplicates_merged": 5826,
+  "declared_duplicates_with_both_ids_present": 5950
+ },
+ "business_keys": {
+  "customers.crm_customer_id": {
+   "rows": 1020000,
+   "distinct": 1020000
+  },
+  "card_accounts.card_account_id": {
+   "rows": 660000,
+   "distinct": 660000
+  },
+  "deposit_accounts.deposit_account_id": {
+   "rows": 780000,
+   "distinct": 780000
+  },
+  "collections_cases.case_id": {
+   "rows": 367229,
+   "distinct": 367229
+  },
+  "promises_to_pay.ptp_id": {
+   "rows": 238815,
+   "distinct": 238815
+  },
+  "contact_history.contact_id": {
+   "rows": 2688337,
+   "distinct": 2688337
+  },
+  "agent_notes.note_id": {
+   "rows": 760594,
+   "distinct": 760594
+  },
+  "loan_accounts.loan_id": {
+   "rows": 404500,
+   "distinct": 404500
+  }
+ },
+ "formats": {
+  "snapshot_iso": 11314540,
+  "snapshot_slash": 837071,
+  "snapshot_compact": 418081,
+  "snapshot_unparsed_in_curated": 0,
+  "card_dob_dd-mm-yyyy": 660000,
+  "card_dob_unparsed": 0,
+  "loan_dob_unparsed": 0,
+  "deposit_dob_unparsed": 0
+ },
+ "id_mismatches": {
+  "deposit_cif_short": 156837,
+  "deposit_cif_total": 780000,
+  "bureau_join_before_pad": 623163,
+  "bureau_join_after_pad": 780000,
+  "contact_case_not_in_cases": 26864,
+  "contact_with_case": 2688337
+ },
+ "referential": {
+  "promises_to_pay.crm_customer_id": {
+   "rows": 238815,
+   "orphans": 6744
+  },
+  "contact_history.crm_customer_id": {
+   "rows": 2661633,
+   "orphans": 75500
+  },
+  "agent_notes.crm_customer_id": {
+   "rows": 760594,
+   "orphans": 21592
+  },
+  "collections_cases.coll_customer_ref": {
+   "rows": 367229,
+   "orphans": 10365
+  },
+  "promises_to_pay.case_id": {
+   "rows": 238815,
+   "orphans": 0
+  },
+  "agent_notes.case_id": {
+   "rows": 760594,
+   "orphans": 0
+  }
+ },
+ "schema_drift": {
+  "channel_only_v2": 19463,
+  "channel_both": 11965,
+  "channel_neither": 0
+ },
+ "inconsistencies": {
+  "open_cases_outcome_null": 96000,
+  "open_cases_status_open": 86059,
+  "case_bucket_mismatch": 3807,
+  "snapshot_bucket_mismatch_rows_with_dpd": 461396,
+  "snapshot_dpd_null": 1005143,
+  "ptp_open_past_grace": 5286
+ },
+ "conflicts": {
+  "province_nonstandard": 10689,
+  "province_null": 2007,
+  "attr_conflict_customers": {
+   "phone_last4": 338427,
+   "postal_fsa": 5546
+  },
+  "customers_with_conflict_flags": 31484,
+  "conflict_flag_counts": {
+   "phone_mismatch": 16567,
+   "postal_mismatch": 5522,
+   "crm_conflicting_identity_evidence": 5132,
+   "accounts_pending_identity_review": 2671,
+   "crm_possible_duplicate_unresolved": 1595,
+   "multiple_candidate_people": 958,
+   "first_name_conflict": 171
+  }
+ },
+ "checks": [
+  {
+   "check": "Row counts equal schema.json",
+   "passed": true,
+   "detail": "all tables",
+   "severity": "error"
+  },
+  {
+   "check": "c360.customer_key is unique and not null",
+   "passed": true,
+   "detail": "1,000,729 rows",
+   "severity": "error"
+  },
+  {
+   "check": "c360.trust_score in [0,1] and not null",
+   "passed": true,
+   "detail": "",
+   "severity": "error"
+  },
+  {
+   "check": "c360 holds no protected-attribute column",
+   "passed": true,
+   "detail": "",
+   "severity": "error"
+  },
+  {
+   "check": "identity_links has exactly one row per source account",
+   "passed": true,
+   "detail": "1,844,500 links",
+   "severity": "error"
+  },
+  {
+   "check": "No auto-link below tier C",
+   "passed": true,
+   "detail": "",
+   "severity": "error"
+  },
+  {
+   "check": "Every CRM record belongs to exactly one customer_key",
+   "passed": true,
+   "detail": "",
+   "severity": "error"
+  },
+  {
+   "check": "Identity precision >= 99% on collections-recorded links",
+   "passed": true,
+   "detail": "99.84%",
+   "severity": "error"
+  },
+  {
+   "check": "Orphan references present (retained, flagged)",
+   "passed": true,
+   "detail": "informational",
+   "severity": "warn"
+  },
+  {
+   "check": "Open-case definition differs between outcome and case_status",
+   "passed": true,
+   "detail": "documented, README definition used",
+   "severity": "warn"
+  }
+ ]
+}
