@@ -200,23 +200,31 @@ w("\nThe measuring population ({0} accounts) is the set that was ever contacted 
 
 # ------------------------------------------------------------------ 11 cleaning decisions
 w("## 10. Cleaning decisions\n")
-w("| # | Issue | Decision | Where |")
-w("|---|---|---|---|")
-for i, (a, b, c_) in enumerate([
-    ("`NA` outcome code vs null", "keep `NA` verbatim; only empty strings become NULL", "`load_raw.py`"),
-    ("IDs with leading zeros", "load as text; pad deposit CIF to 10 digits for matching, keep raw", "`load_raw.py`, `identity.py`"),
-    ("`channel` renamed `channel_v2`", "`channel_eff = coalesce(channel_v2, channel)`", "`cur_contacts`"),
-    ("4 snapshot date formats", "parse all four", "`cur_snapshot.month_end_parsed`"),
-    ("Bucket disagrees with DPD", "add recomputed `*_calc` and a mismatch flag; raw untouched", "`cur_cases`, `cur_snapshot`"),
-    ("Open-case definition", "`outcome IS NULL` per README", "`cur_cases.is_open`"),
-    ("Open promise past grace", "flag, exclude from promise-rate metrics", "`cur_promises`"),
-    ("Per-system DOB/name/phone/postal formats", "normalise per system, match with evidence", "`identity.py`"),
-    ("Duplicate CRM records", "merge only on strong evidence; weaker pairs are listed, not merged", "`identity.py`"),
-    ("Shared mobile numbers", "phone neutralised as evidence, customer flagged and trust-penalised", "`identity.py`, `c360.py`"),
-    ("Province spellings", "map to 2-letter codes", "`c360.py`"),
-    ("Orphan references", "retain and flag, never drop", "all layers"),
-    ("Protected attributes", "excluded from the C360 and from model features (audited)", "`c360.py`, `decisioning/features.py`")], 1):
-    w(f"| {i} | {a} | {b} | {c_} |")
+na_rows = one("SELECT count(*) FROM m.raw_contact_history WHERE outcome_code = 'NA'")
+orph = sum(v["orphans"] for v in R["referential"].values())
+n_acct = one("SELECT count(*) FROM c.id_identity_links")
+shared_cust = one("SELECT count(*) FROM c.c360 WHERE shared_mobile_blocked")
+shared_phones = one("SELECT count(*) FROM c.id_phone_sharing")
+review_pairs = one("SELECT count(*) FROM c.id_crm_pairs WHERE decision = 'review'")
+merged_recs = dup["crm_records_resolved_into_other_keys"]
+R["cleaning_counts"] = dict(na_rows=na_rows, orphans=orph, accounts=n_acct, shared_customers=shared_cust, shared_phones=shared_phones, review_pairs=review_pairs)
+w("| # | Issue | Records affected | Decision | Where |")
+w("|---|---|---:|---|---|")
+for i, (a, cnt, b, c_) in enumerate([
+    ("`NA` outcome code vs null", f"{n(na_rows)} contact rows carry `NA`", "keep `NA` verbatim; only empty strings become NULL", "`load_raw.py`"),
+    ("IDs with leading zeros", f"{n(ids['deposit_cif_short'])} deposit rows", "load as text; pad deposit CIF to 10 digits for matching, keep raw", "`load_raw.py`, `identity.py`"),
+    ("`channel` renamed `channel_v2`", f"{n(sd['channel_only_v2'])} rows (channel missing), {n(sd['channel_both'])} carry both", "`channel_eff = coalesce(channel_v2, channel)`", "`cur_contacts`"),
+    ("4 snapshot date formats", f"{n(fm['snapshot_slash'] + fm['snapshot_compact'])} snapshot rows in a non-ISO format", "parse all four", "`cur_snapshot.month_end_parsed`"),
+    ("Bucket disagrees with DPD", f"{n(inc['case_bucket_mismatch'])} open cases, {n(inc['snapshot_bucket_mismatch_rows_with_dpd'])} snapshot rows", "add recomputed `*_calc` and a mismatch flag; raw untouched", "`cur_cases`, `cur_snapshot`"),
+    ("Open-case definition", f"{n(inc['open_cases_outcome_null'] - inc['open_cases_status_open'])} cases differ between the two definitions", "`outcome IS NULL` per README", "`cur_cases.is_open`"),
+    ("Open promise past grace", f"{n(inc['ptp_open_past_grace'])} promises", "flag, exclude from promise-rate metrics", "`cur_promises`"),
+    ("Per-system DOB/name/phone/postal formats", f"all {n(n_acct)} source accounts", "normalise per system, match with evidence", "`identity.py`"),
+    ("Duplicate CRM records", f"{n(merged_recs)} CRM records sit in merged clusters ({n(dup['crm_records'])} records become {n(dup['customer_keys'])} customers); {n(review_pairs)} weaker pairs left unmerged", "merge only on strong evidence; weaker pairs are listed, not merged", "`identity.py`"),
+    ("Shared mobile numbers", f"{n(shared_phones)} phone numbers, {n(shared_cust)} customers flagged", "phone neutralised as evidence, customer flagged and trust-penalised", "`identity.py`, `c360.py`"),
+    ("Province spellings", f"{n(ca['province_nonstandard'])} CRM rows", "map to 2-letter codes", "`c360.py`"),
+    ("Orphan references", f"{n(orph)} child rows across 4 customer references", "retain and flag, never drop", "all layers"),
+    ("Protected attributes", "8 columns (plus `vulnerability_flag`)", "excluded from the C360 and from model features (audited)", "`c360.py`, `decisioning/features.py`")], 1):
+    w(f"| {i} | {a} | {cnt} | {b} | {c_} |")
 w("\nNo row is dropped and nothing is imputed.\n")
 
 # ------------------------------------------------------------------ 12 validation checks

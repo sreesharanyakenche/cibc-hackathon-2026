@@ -5,11 +5,35 @@
 id: C360-MAPLE-AS-BUILT
 version: "0.1"
 status: draft
-generated_utc: "2026-10-04 11:56"
+generated_utc: "2026-10-04 15:13"
 as_of_date: "2026-09-28"
 grain: one row per customer_key
 row_count: 1000729
-owner: {team: TBC, named_owner: TBC}
+owner:
+  team: "CodeBlooded (Collections Data Product Team)"
+  named_owner: "TBC: to be named by the bank on adoption"
+  steward: "Data steward role: rules decide merges and blocks; a human reviews withheld links and low-trust identities"
+consumers:
+  - "Decisioning layer (identity gate, Decision Record)"
+  - "Agent desktop / Customer 360 UI"
+  - "Insight engine (analytics)"
+  - "PTP-break model training and evaluation"
+allowed_uses:
+  - "Collections operations: agent context and next-best-action recommendations, always open to human review"
+  - "Analytics and reporting on collections performance"
+  - "Model training and evaluation for PTP-break prediction"
+  - "Fairness and audit testing (protected attributes are held outside this table)"
+not_allowed_uses:
+  - "Marketing or cross-sell"
+  - "Credit or underwriting decisions"
+  - "Any decision driven by protected attributes, or by proxy-risk fields (city, fsa, preferred_language) without a logged disparity test"
+  - "Disclosing PII outside role-based access"
+  - "Contacting a customer whose identity_review_required is true before a human confirms who they are"
+refresh:
+  cadence: "Batch rebuild on demand in this build. Proposed production cadence: daily after source close (an assumption: the organisers specify none for the C360)."
+  as_of_date: "2026-09-28"
+  how: "python -m data_pipeline.identity && python -m data_pipeline.c360 (about 4 minutes on the full data)"
+  freshness: "No streaming. Values are as of the snapshot date; identity links and trust scores can change whenever any source system is refreshed."
 
 sources:
   - "customers"
@@ -356,12 +380,14 @@ fields:
     required: false
     null_rate_pct: 72.22
     source: "min(collections_cases.case_open_date)"
+    meaning: "Date the customer's earliest collections case was opened."
     validation: "<= as_of_date"
   - name: latest_case_open_date
     type: "DATE"
     required: false
     null_rate_pct: 72.22
     source: "max(collections_cases.case_open_date)"
+    meaning: "Date the customer's most recent collections case was opened."
     validation: "<= as_of_date"
   - name: n_active_cases
     type: "BIGINT"
@@ -547,6 +573,7 @@ fields:
     required: false
     null_rate_pct: 80.58
     source: "max(agent_notes.note_ts_utc)"
+    meaning: "Timestamp of the most recent agent note on any of the customer's CRM records."
   - name: n_ptp_total
     type: "BIGINT"
     required: true
@@ -559,35 +586,41 @@ fields:
     required: true
     null_rate_pct: 0.0
     source: "promises_to_pay.ptp_status = 'kept'"
+    meaning: "Number of the customer's promises to pay that were kept in full."
     validation: ">= 0"
   - name: n_ptp_broken
     type: "BIGINT"
     required: true
     null_rate_pct: 0.0
     source: "promises_to_pay.ptp_status = 'broken'"
+    meaning: "Number of the customer's promises to pay that were broken (nothing received by the due date plus grace)."
     validation: ">= 0"
   - name: n_ptp_partially_kept
     type: "BIGINT"
     required: true
     null_rate_pct: 0.0
     source: "promises_to_pay.ptp_status = 'partially_kept'"
+    meaning: "Number of the customer's promises to pay where only part of the amount was received."
     validation: ">= 0"
   - name: n_ptp_open
     type: "BIGINT"
     required: true
     null_rate_pct: 0.0
     source: "promises_to_pay.ptp_status = 'open'"
+    meaning: "Number of the customer's promises to pay that are still open (outcome not yet known at the snapshot date)."
     validation: ">= 0"
   - name: last_ptp_status
     type: "VARCHAR"
     required: false
     null_rate_pct: 84.83
     source: "promises_to_pay.ptp_status of latest ptp_created_ts"
+    meaning: "Status of the customer's most recently created promise to pay."
   - name: last_ptp_created_ts
     type: "TIMESTAMP"
     required: false
     null_rate_pct: 84.83
     source: "max(promises_to_pay.ptp_created_ts)"
+    meaning: "Timestamp when the customer's most recent promise to pay was created."
   - name: identity_basis
     type: "VARCHAR"
     required: true
@@ -671,6 +704,7 @@ quality_rules:
   - {id: QR-04, severity: error, description: "every source account has exactly one identity_links row (asserted in data_pipeline/identity.py)"}
   - {id: QR-05, severity: error, description: "auto-linked accounts only for tiers A-C with a unique best customer; D/E and ties are withheld for review"}
   - {id: QR-06, severity: warn, description: "orphan customer references are retained, never silently dropped or fixed"}
+  - {id: QR-07, severity: error, description: "identity precision of auto-links >= 99% on accounts the collections system itself linked to a customer (measured 99.84%; tests/test_c360_api.py)"}
 
 protected_and_pii_handling:
   excluded_protected: [gender_code, marital_status, citizenship_status, household_size, newcomer_program_flag, accessibility_needs_flag, vulnerability_type, accent]

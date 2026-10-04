@@ -84,6 +84,18 @@ def test_data_contract_matches_the_table():
     assert contract["grain"] == "one row per customer_key"
 
 
+def test_data_contract_has_every_field_the_organisers_require():
+    """Build-phase instructions: owner, schema, quality rules, allowed uses, refresh."""
+    import yaml
+    from data_pipeline.config import ROOT
+    c = yaml.safe_load((ROOT / "contracts" / "data_contract.yaml").read_text(encoding="utf-8"))
+    assert c["owner"]["team"] and c["owner"]["steward"]
+    assert len(c["fields"]) == 93 and all({"name", "type", "source", "meaning"} <= set(f) for f in c["fields"])
+    assert any(r["severity"] == "error" for r in c["quality_rules"]) and len(c["quality_rules"]) >= 6
+    assert c["allowed_uses"] and c["not_allowed_uses"]
+    assert c["refresh"]["cadence"] and c["refresh"]["as_of_date"] == "2026-09-28"
+
+
 # ------------------------------------------------------------------ decisioning uses the C360
 def test_low_trust_identity_routes_to_review():
     from decisioning import actions, config, gates

@@ -1,6 +1,6 @@
 # Data Quality Report
 
-*Generated 2026-10-04 12:00 UTC by `data_pipeline/quality_report.py`. Every number is measured from the warehouse at build time. Raw tables are never modified; issues are flagged in `cur_*` views or handled at query time.*
+*Generated 2026-10-04 15:11 UTC by `data_pipeline/quality_report.py`. Every number is measured from the warehouse at build time. Raw tables are never modified; issues are flagged in `cur_*` views or handled at query time.*
 
 ## 1. Dataset overview
 
@@ -117,21 +117,21 @@ The measuring population (283,851 accounts) is the set that was ever contacted o
 
 ## 10. Cleaning decisions
 
-| # | Issue | Decision | Where |
-|---|---|---|---|
-| 1 | `NA` outcome code vs null | keep `NA` verbatim; only empty strings become NULL | `load_raw.py` |
-| 2 | IDs with leading zeros | load as text; pad deposit CIF to 10 digits for matching, keep raw | `load_raw.py`, `identity.py` |
-| 3 | `channel` renamed `channel_v2` | `channel_eff = coalesce(channel_v2, channel)` | `cur_contacts` |
-| 4 | 4 snapshot date formats | parse all four | `cur_snapshot.month_end_parsed` |
-| 5 | Bucket disagrees with DPD | add recomputed `*_calc` and a mismatch flag; raw untouched | `cur_cases`, `cur_snapshot` |
-| 6 | Open-case definition | `outcome IS NULL` per README | `cur_cases.is_open` |
-| 7 | Open promise past grace | flag, exclude from promise-rate metrics | `cur_promises` |
-| 8 | Per-system DOB/name/phone/postal formats | normalise per system, match with evidence | `identity.py` |
-| 9 | Duplicate CRM records | merge only on strong evidence; weaker pairs are listed, not merged | `identity.py` |
-| 10 | Shared mobile numbers | phone neutralised as evidence, customer flagged and trust-penalised | `identity.py`, `c360.py` |
-| 11 | Province spellings | map to 2-letter codes | `c360.py` |
-| 12 | Orphan references | retain and flag, never drop | all layers |
-| 13 | Protected attributes | excluded from the C360 and from model features (audited) | `c360.py`, `decisioning/features.py` |
+| # | Issue | Records affected | Decision | Where |
+|---|---|---:|---|---|
+| 1 | `NA` outcome code vs null | 228,124 contact rows carry `NA` | keep `NA` verbatim; only empty strings become NULL | `load_raw.py` |
+| 2 | IDs with leading zeros | 156,837 deposit rows | load as text; pad deposit CIF to 10 digits for matching, keep raw | `load_raw.py`, `identity.py` |
+| 3 | `channel` renamed `channel_v2` | 19,463 rows (channel missing), 11,965 carry both | `channel_eff = coalesce(channel_v2, channel)` | `cur_contacts` |
+| 4 | 4 snapshot date formats | 1,255,152 snapshot rows in a non-ISO format | parse all four | `cur_snapshot.month_end_parsed` |
+| 5 | Bucket disagrees with DPD | 3,807 open cases, 461,396 snapshot rows | add recomputed `*_calc` and a mismatch flag; raw untouched | `cur_cases`, `cur_snapshot` |
+| 6 | Open-case definition | 9,941 cases differ between the two definitions | `outcome IS NULL` per README | `cur_cases.is_open` |
+| 7 | Open promise past grace | 5,286 promises | flag, exclude from promise-rate metrics | `cur_promises` |
+| 8 | Per-system DOB/name/phone/postal formats | all 1,844,500 source accounts | normalise per system, match with evidence | `identity.py` |
+| 9 | Duplicate CRM records | 38,542 CRM records sit in merged clusters (1,020,000 records become 1,000,729 customers); 827 weaker pairs left unmerged | merge only on strong evidence; weaker pairs are listed, not merged | `identity.py` |
+| 10 | Shared mobile numbers | 4,662 phone numbers, 8,933 customers flagged | phone neutralised as evidence, customer flagged and trust-penalised | `identity.py`, `c360.py` |
+| 11 | Province spellings | 10,689 CRM rows | map to 2-letter codes | `c360.py` |
+| 12 | Orphan references | 114,201 child rows across 4 customer references | retain and flag, never drop | all layers |
+| 13 | Protected attributes | 8 columns (plus `vulnerability_flag`) | excluded from the C360 and from model features (audited) | `c360.py`, `decisioning/features.py` |
 
 No row is dropped and nothing is imputed.
 

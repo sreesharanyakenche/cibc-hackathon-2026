@@ -72,8 +72,8 @@ F = {
  "case_promises_total": ("sum(collections_cases.promises_total)", "Promises recorded across all cases.", ">= 0"),
  "case_promises_kept": ("sum(collections_cases.promises_kept)", "Promises kept across all cases.", ">= 0"),
  "case_promises_broken": ("sum(collections_cases.promises_broken)", "Promises broken across all cases.", ">= 0"),
- "first_case_open_date": ("min(collections_cases.case_open_date)", "", "<= as_of_date"),
- "latest_case_open_date": ("max(collections_cases.case_open_date)", "", "<= as_of_date"),
+ "first_case_open_date": ("min(collections_cases.case_open_date)", "Date the customer's earliest collections case was opened.", "<= as_of_date"),
+ "latest_case_open_date": ("max(collections_cases.case_open_date)", "Date the customer's most recent collections case was opened.", "<= as_of_date"),
  "n_active_cases": ("collections_cases where outcome IS NULL", "Active cases. 'Active' = outcome is null, as defined in the dataset README example query.", ">= 0"),
  "max_current_dpd": ("max(collections_cases.current_dpd) over active cases", "Worst current DPD.", ">= 0"),
  "total_overdue": ("sum(collections_cases.total_overdue) over active cases", "Overdue amount (CAD).", ""),
@@ -101,14 +101,14 @@ F = {
  "last_contact_ts_utc": ("contact_history.contact_ts_utc", "Latest customer-facing contact (UTC).", ""),
  "last_contact_channel": ("contact_history.channel_effective", "Channel of the latest contact; channel_effective = COALESCE(channel_v2, channel) per REL-0926.", ""),
  "n_notes": ("agent_notes via crm_customer_id", "Number of agent notes.", ">= 0"),
- "last_note_ts_utc": ("max(agent_notes.note_ts_utc)", "", ""),
+ "last_note_ts_utc": ("max(agent_notes.note_ts_utc)", "Timestamp of the most recent agent note on any of the customer's CRM records.", ""),
  "n_ptp_total": ("promises_to_pay via crm_customer_id", "All PTPs.", ">= 0"),
- "n_ptp_kept": ("promises_to_pay.ptp_status = 'kept'", "", ">= 0"),
- "n_ptp_broken": ("promises_to_pay.ptp_status = 'broken'", "", ">= 0"),
- "n_ptp_partially_kept": ("promises_to_pay.ptp_status = 'partially_kept'", "", ">= 0"),
- "n_ptp_open": ("promises_to_pay.ptp_status = 'open'", "", ">= 0"),
- "last_ptp_status": ("promises_to_pay.ptp_status of latest ptp_created_ts", "", ""),
- "last_ptp_created_ts": ("max(promises_to_pay.ptp_created_ts)", "", ""),
+ "n_ptp_kept": ("promises_to_pay.ptp_status = 'kept'", "Number of the customer's promises to pay that were kept in full.", ">= 0"),
+ "n_ptp_broken": ("promises_to_pay.ptp_status = 'broken'", "Number of the customer's promises to pay that were broken (nothing received by the due date plus grace).", ">= 0"),
+ "n_ptp_partially_kept": ("promises_to_pay.ptp_status = 'partially_kept'", "Number of the customer's promises to pay where only part of the amount was received.", ">= 0"),
+ "n_ptp_open": ("promises_to_pay.ptp_status = 'open'", "Number of the customer's promises to pay that are still open (outcome not yet known at the snapshot date).", ">= 0"),
+ "last_ptp_status": ("promises_to_pay.ptp_status of latest ptp_created_ts", "Status of the customer's most recently created promise to pay.", ""),
+ "last_ptp_created_ts": ("max(promises_to_pay.ptp_created_ts)", "Timestamp when the customer's most recent promise to pay was created.", ""),
  "identity_basis": ("identity_matching", "'crm_only' = no account could be attributed; 'crm+linked_accounts' = at least one tier A-C link.", "in {crm_only, crm+linked_accounts}"),
  "match_confidence": ("identity_matching tiers", "Minimum of cluster-merge confidence and linked-account tier confidences (A .97, B .90, C .88; merges .99/.95/.93); 1.0 when CRM-only singleton. Ordinal, not a calibrated probability.", "0 <= x <= 1"),
  "n_linked_accounts": ("identity_links", "Accounts attributed through tier A-C links.", ">= 0"),
@@ -151,7 +151,32 @@ def main() -> int:
     w(f"as_of_date: \"2026-09-28\"")
     w(f"grain: one row per customer_key")
     w(f"row_count: {n}")
-    w("owner: {team: TBC, named_owner: TBC}")
+    w("owner:")
+    w(f"  team: {y('CodeBlooded (Collections Data Product Team)')}")
+    w(f"  named_owner: {y('TBC: to be named by the bank on adoption')}")
+    w(f"  steward: {y('Data steward role: rules decide merges and blocks; a human reviews withheld links and low-trust identities')}")
+    w("consumers:")
+    for c_ in ("Decisioning layer (identity gate, Decision Record)", "Agent desktop / Customer 360 UI", "Insight engine (analytics)",
+               "PTP-break model training and evaluation"):
+        w(f"  - {y(c_)}")
+    w("allowed_uses:")
+    for u_ in ("Collections operations: agent context and next-best-action recommendations, always open to human review",
+               "Analytics and reporting on collections performance",
+               "Model training and evaluation for PTP-break prediction",
+               "Fairness and audit testing (protected attributes are held outside this table)"):
+        w(f"  - {y(u_)}")
+    w("not_allowed_uses:")
+    for u_ in ("Marketing or cross-sell",
+               "Credit or underwriting decisions",
+               "Any decision driven by protected attributes, or by proxy-risk fields (city, fsa, preferred_language) without a logged disparity test",
+               "Disclosing PII outside role-based access",
+               "Contacting a customer whose identity_review_required is true before a human confirms who they are"):
+        w(f"  - {y(u_)}")
+    w("refresh:")
+    w(f"  cadence: {y('Batch rebuild on demand in this build. Proposed production cadence: daily after source close (an assumption: the organisers specify none for the C360).')}")
+    w("  as_of_date: \"2026-09-28\"")
+    w(f"  how: {y('python -m data_pipeline.identity && python -m data_pipeline.c360 (about 4 minutes on the full data)')}")
+    w(f"  freshness: {y('No streaming. Values are as of the snapshot date; identity links and trust scores can change whenever any source system is refreshed.')}")
     w("")
     w("sources:")
     for s_ in ("customers", "card_accounts", "loan_accounts", "deposit_accounts", "external (bureau name/DOB for CIF matching only)",
@@ -194,7 +219,8 @@ def main() -> int:
                         ("QR-03", "no protected attribute column in c360", "error"),
                         ("QR-04", "every source account has exactly one identity_links row (asserted in data_pipeline/identity.py)", "error"),
                         ("QR-05", "auto-linked accounts only for tiers A-C with a unique best customer; D/E and ties are withheld for review", "error"),
-                        ("QR-06", "orphan customer references are retained, never silently dropped or fixed", "warn")]:
+                        ("QR-06", "orphan customer references are retained, never silently dropped or fixed", "warn"),
+                        ("QR-07", "identity precision of auto-links >= 99% on accounts the collections system itself linked to a customer (measured 99.84%; tests/test_c360_api.py)", "error")]:
         w(f"  - {{id: {rid}, severity: {sev}, description: {y(d)}}}")
     w("")
     w("protected_and_pii_handling:")

@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-04 12:00",
+ "generated_utc": "2026-10-04 15:11",
  "tables": {
   "account_monthly_snapshot": {
    "rows": 12569692,
@@ -306,6 +306,14 @@
    "multiple_candidate_people": 958,
    "first_name_conflict": 171
   }
+ },
+ "cleaning_counts": {
+  "na_rows": 228124,
+  "orphans": 114201,
+  "accounts": 1844500,
+  "shared_customers": 8933,
+  "shared_phones": 4662,
+  "review_pairs": 827
  },
  "checks": [
   {

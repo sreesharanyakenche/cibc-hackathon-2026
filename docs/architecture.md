@@ -1,6 +1,6 @@
 # Architecture
 
-Diagram: [architecture.png](architecture.png) · [architecture.pdf](architecture.pdf) (source: `architecture.html`, rendered with a headless browser).
+Diagram: [architecture.png](architecture.png) · [architecture.pdf](architecture.pdf) (the PDF is built from the same image).
 Layer details: [layer1_identity_c360.md](layer1_identity_c360.md), [insight_layer.md](insight_layer.md), [decisioning.md](decisioning.md).
 
 ## Components and data stores
